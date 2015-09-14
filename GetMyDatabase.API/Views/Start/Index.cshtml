@@ -1,0 +1,124 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+<div class="col-sm-12">
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading">Database</div>
+            <div class="panel-body">
+                <div class="col-md-6">
+                    <div class="form-group" id="databaseListDiv" style="display:none">
+                        <label class="col-sm-2 control-label">Databases</label>
+                        <div class="col-sm-10">
+                            <select class="form-control" id="databaseList" multiple></select>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="col-md-12">
+                    <div class="form-group" id="tableListDiv" style="display:none">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+
+    </div>
+</div>
+
+<div class="modal fade" id="waitModal" tabindex="-1" role="dialog" aria-labelledby="waitModal-label" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" id="waitModal-label">Connecting to Server</h4>
+            </div>
+            <div class="modal-body">
+                <p>Please be patient while we get information from Server</p>
+            </div>
+        </div>
+    </div>
+</div>
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            var databaseUrl = '@Url.RouteUrl("DefaultApi", new { httproute = "", controller = "Database" })';
+            var databaseList = $("#databaseList");
+            var tableUrl = '@Url.RouteUrl("DefaultApi", new { httproute = "", controller = "Table" })';
+            var tableListDiv = $("#tableListDiv");
+            function getTablesFromDatabases(list) {
+                var selectedDatabases = $(list).val();
+                $("#tableListDiv").show();
+
+                $.getJSON(tableUrl, { databases: selectedDatabases })
+                    .done(function (data) {
+
+                        tableListDiv.empty();
+                        $.each(data, function (index, item) {
+
+                            var dbName = item[index].Database;
+                            tableListDiv.append('<div class="panel panel-default " id ="dbAccordion' + dbName + '"><div class="panel-heading"><a data-toggle="collapse" aria-expanded = "true" href="#!" data-target ="#db' + index + '"><span class = "glyphicon glyphicon-cloud"></span> ' + dbName + '</a><a href="#!" class="pull-right"><span class="glyphicon glyphicon-filter"></span></a></div><div class="panel-body collapse in" aria-expanded = "true" id = "db' + index + '">');
+                            $.each(item, function (i, value) {
+                                $("#db" + index).append('<div class="panel panel-default "><div class="panel-heading"><a data-toggle="collapse" href="#!" aria-expanded = "true" data-target="#' + value.Name + '"><span class = "glyphicon glyphicon-briefcase"></span> ' + value.Schema + '.' + value.Name + '</a><a href="#!" class="pull-right"><span class="glyphicon glyphicon-filter"></span></a></div><div class="panel-body collapse in" aria-expanded = "true" id = "' + value.Name + '"><a href="#!" class="columnInfo">Click here to get column info</a></div></div>');
+                            })
+                            //tableListDiv.append('</div></div>');
+                            tableListDiv.append('</div>');
+                        });
+                    })
+                    .fail(function (jqXHR, textStatus, err) {
+                        console.log("Table Error", err);
+                    });
+            }
+            function getDatabases(url) {
+
+                databaseList.empty();
+                $.getJSON(url)
+                    .done(function (data) {
+                        $("#databaseListDiv").show();
+                        $.each(data, function (index, item) {
+                            databaseList.append("<option value = " + item.Name + "><span class='glyphicon glyphicon-wrench'></span> " + item.Name + "</option>");
+                        });
+                        databaseList.multiselect({
+                            onDropdownHide: function (event) {
+                                console.log("onDrodownHide", event);
+                                getTablesFromDatabases(databaseList);
+                            },
+                            buttonWidth: '150px',
+                            maxheight: 10
+                        });
+                    })
+                    .fail(function (jqXHR, textStatus, err) {
+                        console.log("Database Error", err);
+                    });
+            }
+
+            $(document).ajaxStart(function () {
+                $("#waitModal").modal("show");
+            });
+
+            $(document).ajaxStop(function () {
+                $("#waitModal").modal("hide");
+            });
+            getDatabases(databaseUrl);
+            var columnUrl = '@Url.RouteUrl("DefaultApi", new { httproute = "", controller = "Column" })';
+            $("a.columnInfo").on("click", function (e) {
+                debugger;
+                e.preventDefault();
+                var self = $(this);
+                console.log("Column Info", self);
+                $.getJSON(columnUrl, { parameters: ["", ""] })
+                    .done(function (data) {
+                        self.empty();
+                        $.each(function (index, item) {
+                            self.val(self.val() + "," + item.Name);
+                        });
+                    })
+                    .fail(function (jqXHR, textStatus, err) {
+                        console.log(err);
+                    });
+            });
+
+        });
+    </script>
+}
